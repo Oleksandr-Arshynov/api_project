@@ -42,7 +42,7 @@ async def get_contact(
 @router.get("/")
 async def get_contacts(db = fastapi.Depends(get_db), current_user: User = fastapi.Depends(auth_service.get_current_user)):
     contacts = db.query(models.ContactModel).filter(models.ContactModel.user_id == current_user.id).all()
-   
+    
     return contacts
 
 
@@ -59,6 +59,9 @@ async def create_contact(contact: schemas.ContactRequestSchema, db = fastapi.Dep
     db.add(new_contact)
     db.commit()
     db.refresh(new_contact)
+    
+    new_contact.user.hash_password = None
+    new_contact.user.refresh_token = None
     return new_contact
 
 
