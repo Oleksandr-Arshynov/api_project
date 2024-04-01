@@ -85,15 +85,14 @@ async def update_contact(
     return {"error": "Contact not found or does not belong to the current user"}
 
 
-
 @router.delete("/{id}")
 async def delete_contact(id: int, db = fastapi.Depends(get_db), current_user: User = fastapi.Depends(auth_service.get_current_user)):
     contact = db.query(models.ContactModel).filter(models.ContactModel.id == id).first()
-    print(contact)
-    db.delete(contact)
-    db.commit()
-    return contact
-
+    if contact and contact.user_id == current_user.id:
+        db.delete(contact)
+        db.commit()
+        return contact
+    return {"error": "Contact not found or does not belong to the current user"}
 
 @router.get("/upcoming_birthdays")
 async def get_upcoming_birthdays(db=fastapi.Depends(get_db), current_user: User = fastapi.Depends(auth_service.get_current_user)):
