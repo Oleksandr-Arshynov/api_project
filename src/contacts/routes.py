@@ -63,9 +63,15 @@ async def create_contact(contact: schemas.ContactRequestSchema, db = fastapi.Dep
 
 
 @router.put("/{id}")
-async def update_contact(id: int, contact: schemas.ContactRequestSchema, db = fastapi.Depends(get_db), current_user: User = fastapi.Depends(auth_service.get_current_user)):
+async def update_contact(
+    id: int,
+    contact: schemas.ContactRequestSchema,
+    db = fastapi.Depends(get_db),
+    current_user: User = fastapi.Depends(auth_service.get_current_user)
+):
     db_contact = db.query(models.ContactModel).filter(models.ContactModel.id == id).first()
-    if db_contact != None:
+
+    if db_contact and db_contact.user_id == current_user.id:
         db_contact.name = contact.name
         db_contact.surname = contact.surname
         db_contact.email = contact.email
@@ -76,7 +82,8 @@ async def update_contact(id: int, contact: schemas.ContactRequestSchema, db = fa
         db.commit()
         return {"message": "Contact updated successfully"}
 
-    return {"error": "Contact not found"}
+    return {"error": "Contact not found or does not belong to the current user"}
+
 
 
 @router.delete("/{id}")
