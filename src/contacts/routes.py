@@ -20,7 +20,8 @@ async def get_contact(
     db=fastapi.Depends(get_db),
     current_user: User = fastapi.Depends(auth_service.get_current_user)
 ):
-    query = db.query(models.ContactModel)
+    query = db.query(models.ContactModel).filter(models.ContactModel.user_id == current_user.id)
+    
 
     if id is not None:
         query = query.filter(models.ContactModel.id == id)
@@ -40,7 +41,8 @@ async def get_contact(
 
 @router.get("/")
 async def get_contacts(db = fastapi.Depends(get_db), current_user: User = fastapi.Depends(auth_service.get_current_user)):
-    contacts = db.query(models.ContactModel).all()
+    contacts = db.query(models.ContactModel).filter(models.ContactModel.user_id == current_user.id).all()
+   
     return contacts
 
 
@@ -51,7 +53,8 @@ async def create_contact(contact: schemas.ContactRequestSchema, db = fastapi.Dep
         surname=contact.surname,
         email=contact.email,
         phone=contact.phone,
-        birthday=contact.birthday
+        birthday=contact.birthday,
+        user_id=current_user.id 
     )
     db.add(new_contact)
     db.commit()

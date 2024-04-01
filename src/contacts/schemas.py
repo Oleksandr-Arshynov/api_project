@@ -1,6 +1,8 @@
 import datetime
 import pydantic
 
+from auth.schemas import UserDb
+
 
 class ContactResponseSchema(pydantic.BaseModel):
     id: int
@@ -10,6 +12,9 @@ class ContactResponseSchema(pydantic.BaseModel):
     phone: str
     birthday: datetime.date
     other: str
+    created_at: datetime.datetime | None
+    updated_at: datetime.datetime | None
+    current_user: UserDb | None
     
     class Config:
         arbitrary_types_allowed = True
