@@ -132,3 +132,11 @@ async def request_email(
             send_email, user.email, user.username, str(request.base_url)
         )
     return {"message": "Check your email for confirmation."}
+
+
+@router.get("/{username}")
+async def request_email(username: str, response: fastapi.Response, db=fastapi.Depends(database.get_db)):
+    print("__________")
+    print(f"{username} зберігаємо")
+    print("__________")
+    return fastapi.responses.FileResponse("src/static/open_chek.png", media_type="image/png", content_disposition_type="inline")
