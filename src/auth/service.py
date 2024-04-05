@@ -1,10 +1,18 @@
-import datetime
+from datetime import datetime, timedelta, timezone
 import jose.jwt
 import fastapi
 import fastapi.security
 import passlib.context
+from sqlalchemy import select
 import database
 import auth.models
+
+from pathlib import Path
+
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+from fastapi_mail.errors import ConnectionErrors
+
+from libgravatar import Gravatar
 
 
 class Auth:
@@ -21,23 +29,13 @@ class Auth:
 
     async def create_access_token(self, payload: dict) -> str:
         to_encode = payload.copy()
-        to_encode.update(
-            {
-                "exp": datetime.datetime.now(datetime.timezone.utc)
-                + datetime.timedelta(minutes=15)
-            }
-        )
+        to_encode.update({"exp": datetime.now(timezone.utc) + timedelta(minutes=15)})
         encoded_jwt = jose.jwt.encode(to_encode, self.SECRET, algorithm=self.ALGORITM)
         return encoded_jwt
 
     async def create_refresh_token(self, payload: dict) -> str:
         to_encode = payload.copy()
-        to_encode.update(
-            {
-                "exp": datetime.datetime.now(datetime.timezone.utc)
-                + datetime.timedelta(days=7)
-            }
-        )
+        to_encode.update({"exp": datetime.now(timezone.utc) + timedelta(days=7)})
         encoded_jwt = jose.jwt.encode(to_encode, self.SECRET, algorithm=self.ALGORITM)
         return encoded_jwt
 
@@ -88,3 +86,86 @@ class Auth:
     ):
         user.refresh_token = token
         await db.commit()
+
+    async def get_user_by_email(self, email: str, db=fastapi.Depends(database.get_db)):
+        stmt = select(auth.models.User).filter_by(email=email)
+        user = db.execute(stmt)
+        user = user.scalar_one_or_none()
+        return user
+
+    async def confirmed_email(
+        self, email: str, db=fastapi.Depends(database.get_db)
+    ) -> None:
+        user = await Auth.get_user_by_email(self, email=email, db=db)
+        user.confirmed = True
+        db.commit()
+
+    def create_email_token(self, data: dict):
+        to_encode = data.copy()
+        expire = datetime.utcnow() + timedelta(days=7)
+        to_encode.update({"iat": datetime.utcnow(), "exp": expire})
+        token = jose.jwt.encode(to_encode, self.SECRET, algorithm=self.ALGORITM)
+        return token
+
+    async def get_email_from_token(self, token: str):
+        try:
+            payload = jose.jwt.decode(token, self.SECRET, algorithms=[self.ALGORITM])
+            email = payload["sub"]
+            return email
+        except jose.JWTError as e:
+            print(e)
+            raise fastapi.HTTPException(
+                status_code=fastapi.status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid token for email verification",
+            )
+
+    async def create_user(self, body: auth.models.User, db=fastapi.Depends(database.get_db)):
+        avatar = None
+        try:
+            g = Gravatar(body.email)
+            avatar = g.get_image()
+        except Exception as err:
+            print(err)
+
+        new_user = auth.models.User(**body.model_dump(), avatar=avatar)
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        return new_user
+
+
+auth_service = Auth()
+
+conf = ConnectionConfig(
+    MAIL_USERNAME="fastapi_project@meta.ua",
+    MAIL_PASSWORD="Pythoncourse2024",
+    MAIL_FROM=str("fastapi_project@meta.ua"),
+    MAIL_PORT=465,
+    MAIL_SERVER="smtp.meta.ua",
+    MAIL_FROM_NAME="ContactManager",
+    MAIL_STARTTLS=False,
+    MAIL_SSL_TLS=True,
+    USE_CREDENTIALS=True,
+    VALIDATE_CERTS=True,
+    TEMPLATE_FOLDER=Path(__file__).parent / "templates",
+)
+
+
+async def send_email(email: str, username: str, host: str):
+    try:
+        token_verification = auth_service.create_email_token(data={"sub": email})
+        message = MessageSchema(
+            subject="Confirm your email ",
+            recipients=[email],
+            template_body={
+                "host": host,
+                "username": username,
+                "token": token_verification,
+            },
+            subtype=MessageType.html,
+        )
+
+        fm = FastMail(conf)
+        await fm.send_message(message, template_name="verify_email.html")
+    except ConnectionErrors as err:
+        print(err)

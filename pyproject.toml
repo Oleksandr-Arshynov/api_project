@@ -13,6 +13,8 @@ sqlalchemy = "^2.0.28"
 alembic = "^1.13.1"
 psycopg2-binary = "^2.9.9"
 bcrypt = "^3.2.0"
+fastapi-mail = "^1.4.1"
+libgravatar = "^1.0.4"
 
 
 [build-system]

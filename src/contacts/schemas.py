@@ -15,10 +15,11 @@ class ContactResponseSchema(pydantic.BaseModel):
     created_at: datetime.datetime | None
     updated_at: datetime.datetime | None
     current_user: UserDb | None
-    
+
     class Config:
         arbitrary_types_allowed = True
-    
+
+
 class ContactRequestSchema(pydantic.BaseModel):
     name: str
     surname: str
@@ -26,6 +27,6 @@ class ContactRequestSchema(pydantic.BaseModel):
     phone: str
     birthday: datetime.date
     other: str
-    
+
     class Config:
         arbitrary_types_allowed = True
