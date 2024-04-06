@@ -1,3 +1,5 @@
+import sys
+sys.path.append("/Users/oleksandrarshinov/Desktop/Documents/Repository/api_project/api_project/src/static")
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 import uvicorn
@@ -7,7 +9,7 @@ import contacts.routes
 
 contacts_api = FastAPI()
 
-contacts_api.mount("/static", StaticFiles(directory="/src/static"), name="static")
+contacts_api.mount("/static", StaticFiles(directory="/Users/oleksandrarshinov/Desktop/Documents/Repository/api_project/api_project/src/static"), name="static")
 
 contacts_api.include_router(contacts.routes.router)
 contacts_api.include_router(auth.routes.router)

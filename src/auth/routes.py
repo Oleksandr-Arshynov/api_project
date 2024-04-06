@@ -5,7 +5,8 @@ import database
 
 import auth.schemas
 import auth.models
-from auth.service import auth_service, send_email
+from auth.service import auth_service
+from auth.email import send_email
 
 
 router = fastapi.APIRouter(prefix="/auth", tags=["auth"])

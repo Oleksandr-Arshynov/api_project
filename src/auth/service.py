@@ -13,12 +13,13 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from fastapi_mail.errors import ConnectionErrors
 
 from libgravatar import Gravatar
+from conf.config import config
 
 
 class Auth:
     HASH_CONTEXT = passlib.context.CryptContext(schemes=["bcrypt"])
-    ALGORITM = "HS256"
-    SECRET = "My secret key"
+    ALGORITHM = config.ALGORITHM
+    SECRET = config.SECRET_KEY_JWT
     oauth2_scheme = fastapi.security.OAuth2PasswordBearer("/auth/login")
 
     def verify_password(self, plain_password, hashed_password) -> bool:
@@ -30,13 +31,13 @@ class Auth:
     async def create_access_token(self, payload: dict) -> str:
         to_encode = payload.copy()
         to_encode.update({"exp": datetime.now(timezone.utc) + timedelta(minutes=15)})
-        encoded_jwt = jose.jwt.encode(to_encode, self.SECRET, algorithm=self.ALGORITM)
+        encoded_jwt = jose.jwt.encode(to_encode, self.SECRET, algorithm=self.ALGORITHM)
         return encoded_jwt
 
     async def create_refresh_token(self, payload: dict) -> str:
         to_encode = payload.copy()
         to_encode.update({"exp": datetime.now(timezone.utc) + timedelta(days=7)})
-        encoded_jwt = jose.jwt.encode(to_encode, self.SECRET, algorithm=self.ALGORITM)
+        encoded_jwt = jose.jwt.encode(to_encode, self.SECRET, algorithm=self.ALGORITHM)
         return encoded_jwt
 
     async def get_current_user(
@@ -51,7 +52,7 @@ class Auth:
             headers={"WWW-Authenticate": "Bearer"},
         )
         try:
-            payload = jose.jwt.decode(token, self.SECRET, algorithms=[self.ALGORITM])
+            payload = jose.jwt.decode(token, self.SECRET, algorithms=[self.ALGORITHM])
         except jose.ExpiredSignatureError:
             raise credentials_exception
         except jose.JWTError:
@@ -72,7 +73,7 @@ class Auth:
 
     async def decode_refresh_token(self, token: str) -> str:
         try:
-            payload = jose.jwt.decode(token, Auth.SECRET, algorithms=[Auth.ALGORITM])
+            payload = jose.jwt.decode(token, Auth.SECRET, algorithms=[Auth.ALGORITHM])
             return payload.get("sub")
         except jose.ExpiredSignatureError:
             raise fastapi.HTTPException(status_code=401, detail="Token has expired")
@@ -104,12 +105,12 @@ class Auth:
         to_encode = data.copy()
         expire = datetime.utcnow() + timedelta(days=7)
         to_encode.update({"iat": datetime.utcnow(), "exp": expire})
-        token = jose.jwt.encode(to_encode, self.SECRET, algorithm=self.ALGORITM)
+        token = jose.jwt.encode(to_encode, self.SECRET, algorithm=self.ALGORITHM)
         return token
 
     async def get_email_from_token(self, token: str):
         try:
-            payload = jose.jwt.decode(token, self.SECRET, algorithms=[self.ALGORITM])
+            payload = jose.jwt.decode(token, self.SECRET, algorithms=[self.ALGORITHM])
             email = payload["sub"]
             return email
         except jose.JWTError as e:
@@ -119,7 +120,9 @@ class Auth:
                 detail="Invalid token for email verification",
             )
 
-    async def create_user(self, body: auth.models.User, db=fastapi.Depends(database.get_db)):
+    async def create_user(
+        self, body: auth.models.User, db=fastapi.Depends(database.get_db)
+    ):
         avatar = None
         try:
             g = Gravatar(body.email)
@@ -135,37 +138,3 @@ class Auth:
 
 
 auth_service = Auth()
-
-conf = ConnectionConfig(
-    MAIL_USERNAME="fastapi_project@meta.ua",
-    MAIL_PASSWORD="Pythoncourse2024",
-    MAIL_FROM=str("fastapi_project@meta.ua"),
-    MAIL_PORT=465,
-    MAIL_SERVER="smtp.meta.ua",
-    MAIL_FROM_NAME="ContactManager",
-    MAIL_STARTTLS=False,
-    MAIL_SSL_TLS=True,
-    USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True,
-    TEMPLATE_FOLDER=Path(__file__).parent / "templates",
-)
-
-
-async def send_email(email: str, username: str, host: str):
-    try:
-        token_verification = auth_service.create_email_token(data={"sub": email})
-        message = MessageSchema(
-            subject="Confirm your email ",
-            recipients=[email],
-            template_body={
-                "host": host,
-                "username": username,
-                "token": token_verification,
-            },
-            subtype=MessageType.html,
-        )
-
-        fm = FastMail(conf)
-        await fm.send_message(message, template_name="verify_email.html")
-    except ConnectionErrors as err:
-        print(err)

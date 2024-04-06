@@ -5,9 +5,9 @@ services:
     ports:
       - "6379:6379"
   postgres:
-    image: postgres:12
+    image: postgres
     environment:
-      POSTGRES_DB: rest_app
+      POSTGRES_DB: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 567234
     ports:
