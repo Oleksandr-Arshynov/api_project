@@ -16,9 +16,9 @@ class Settings(BaseSettings):
     REDIS_DOMAIN: str = 'localhost'
     REDIS_PORT: int = 6379
     REDIS_PASSWORD: str | None = None
-    CLD_NAME: str = 'abc'
-    CLD_API_KEY: int = 326488457974591
-    CLD_API_SECRET: str = "secret"
+    CLD_NAME: str = "dcluqr6zi"
+    CLD_API_KEY: int = 218578366288237
+    CLD_API_SECRET: str = "RIPZB8w29CJyB02a_lDUo0L6_Pk"
 
     @field_validator("ALGORITHM")
     @classmethod

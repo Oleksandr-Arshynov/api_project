@@ -12,7 +12,7 @@ class UserDb(pydantic.BaseModel):
     username: str
     email: str
     hash_password: str
-    avatar: str
+    avatar: str | None
 
 
 class Token(pydantic.BaseModel):

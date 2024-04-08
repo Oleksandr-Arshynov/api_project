@@ -1,16 +1,13 @@
 from datetime import datetime, timedelta, timezone
+import pickle
 import jose.jwt
 import fastapi
 import fastapi.security
 import passlib.context
+import redis
 from sqlalchemy import select
 import database
 import auth.models
-
-from pathlib import Path
-
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
-from fastapi_mail.errors import ConnectionErrors
 
 from libgravatar import Gravatar
 from conf.config import config
@@ -21,6 +18,12 @@ class Auth:
     ALGORITHM = config.ALGORITHM
     SECRET = config.SECRET_KEY_JWT
     oauth2_scheme = fastapi.security.OAuth2PasswordBearer("/auth/login")
+    cache = redis.Redis(
+        host=config.REDIS_DOMAIN,
+        port=config.REDIS_PORT,
+        db=0,
+        password=config.REDIS_PASSWORD,
+    )
 
     def verify_password(self, plain_password, hashed_password) -> bool:
         return self.HASH_CONTEXT.verify(plain_password, hashed_password)
@@ -62,13 +65,23 @@ class Auth:
         if email is None:
             raise credentials_exception
 
-        user = (
-            db.query(auth.models.User)
-            .filter(auth.models.User.username == email)
-            .first()
-        )
+        user_hash = str(email)
+        user = self.cache.get(user_hash)
+
         if user is None:
-            raise credentials_exception
+            print("User from db")
+            user = (
+                db.query(auth.models.User)
+                .filter(auth.models.User.username == email)
+                .first()
+            )
+            if user is None:
+                raise credentials_exception
+            self.cache.set(user_hash, pickle.dumps(user))
+            self.cache.expire(user_hash, 300)
+        else:
+            print("User from cache")
+            user = pickle.loads(user)
         return user
 
     async def decode_refresh_token(self, token: str) -> str:
@@ -135,6 +148,20 @@ class Auth:
         await db.commit()
         await db.refresh(new_user)
         return new_user
+
+    async def update_avatar_url(
+        self, email: str, url: str | None, db=fastapi.Depends(database.get_db)
+    ):
+        user = (
+            db.query(auth.models.User)
+            .filter(auth.models.User.username == email)
+            .first()
+        )
+        user.avatar = url
+        db.commit()
+        db.refresh(user)
+        return user
+
 
 
 auth_service = Auth()

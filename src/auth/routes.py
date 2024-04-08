@@ -1,13 +1,26 @@
-import datetime
+import pickle
 import fastapi
 import fastapi.security
 import database
 
+from fastapi_limiter.depends import RateLimiter
+from fastapi import (
+    Depends,
+    HTTPException,
+    UploadFile,
+    File,
+)
+import cloudinary
+import cloudinary.uploader
+
+    
+
 import auth.schemas
 import auth.models
 from auth.service import auth_service
-from auth.email import send_email
+from auth.email import send_email, send_email_reset
 
+from conf.config import config
 
 router = fastapi.APIRouter(prefix="/auth", tags=["auth"])
 
@@ -133,3 +146,47 @@ async def request_email(
             send_email, user.email, user.username, str(request.base_url)
         )
     return {"message": "Check your email for confirmation."}
+
+
+@router.get(
+    "/me",
+    response_model=auth.schemas.UserDb,
+    dependencies=[fastapi.Depends(RateLimiter(times=10, seconds=20))],
+)
+async def get_current_user(
+    user: auth.models.User = fastapi.Depends(auth_service.get_current_user),
+):
+    return user
+
+
+cloudinary.config(
+    cloud_name=config.CLD_NAME,
+    api_key=config.CLD_API_KEY,
+    api_secret=config.CLD_API_SECRET,
+    secure=True,
+)
+
+@router.patch(
+    "/avatar",
+    response_model=auth.schemas.UserDb,
+    dependencies=[Depends(RateLimiter(times=1, seconds=20))],
+)
+async def upgrade_avatar(
+    file: UploadFile = File(),
+    user: auth.models.User = fastapi.Depends(auth_service.get_current_user),
+    db=fastapi.Depends(database.get_db),
+):
+    public_id = f"Web19/{user.email}"
+    print(public_id)
+    res = cloudinary.uploader.upload(file.file, public_id=public_id, overwrite=True)
+    print(res)
+    res_url = cloudinary.CloudinaryImage(public_id).build_url(
+        width=250, height=250, crop="fill", version=res.get("version")
+    )
+    user = await auth_service.update_avatar_url(user.email, res_url, db)
+    auth_service.cache.set(user.email, pickle.dumps(user))
+    auth_service.cache.expire(user.email, 300)
+    return user
+
+
+
