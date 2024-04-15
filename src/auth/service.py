@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import pickle
+import unittest
 import jose.jwt
 import fastapi
 import fastapi.security
@@ -26,18 +27,53 @@ class Auth:
     )
 
     def verify_password(self, plain_password, hashed_password) -> bool:
+        """Verify the password against its hash.
+
+        Args:
+            plain_password (str): The plain password.
+            hashed_password (str): The hashed password.
+
+        Returns:
+            bool: True if the passwords match, False otherwise.
+        """
         return self.HASH_CONTEXT.verify(plain_password, hashed_password)
+    
+    
 
     def get_password_hash(self, plain_password):
+        """Get the hash of a password.
+
+        Args:
+            plain_password (str): The plain password.
+
+        Returns:
+            str: The hashed password.
+        """
         return self.HASH_CONTEXT.hash(plain_password)
 
     async def create_access_token(self, payload: dict) -> str:
+        """Create an access token.
+
+        Args:
+            payload (dict): The payload to encode into the token.
+
+        Returns:
+            str: The access token.
+        """
         to_encode = payload.copy()
         to_encode.update({"exp": datetime.now(timezone.utc) + timedelta(minutes=15)})
         encoded_jwt = jose.jwt.encode(to_encode, self.SECRET, algorithm=self.ALGORITHM)
         return encoded_jwt
 
     async def create_refresh_token(self, payload: dict) -> str:
+        """Create a refresh token.
+
+        Args:
+            payload (dict): The payload to encode into the token.
+
+        Returns:
+            str: The refresh token.
+        """
         to_encode = payload.copy()
         to_encode.update({"exp": datetime.now(timezone.utc) + timedelta(days=7)})
         encoded_jwt = jose.jwt.encode(to_encode, self.SECRET, algorithm=self.ALGORITHM)
@@ -48,6 +84,15 @@ class Auth:
         token: str = fastapi.Depends(oauth2_scheme),
         db=fastapi.Depends(database.get_db),
     ):
+        """Get the current authenticated user.
+
+        Args:
+            token (str, optional): The JWT token. Defaults to fastapi.Depends(oauth2_scheme).
+            db: The database session.
+
+        Returns:
+            auth.models.User: The current user.
+        """
 
         credentials_exception = fastapi.HTTPException(
             status_code=fastapi.status.HTTP_401_UNAUTHORIZED,
@@ -85,6 +130,14 @@ class Auth:
         return user
 
     async def decode_refresh_token(self, token: str) -> str:
+        """Decode a refresh token.
+
+        Args:
+            token (str): The refresh token.
+
+        Returns:
+            str: The decoded token.
+        """
         try:
             payload = jose.jwt.decode(token, Auth.SECRET, algorithms=[Auth.ALGORITHM])
             return payload.get("sub")
@@ -98,10 +151,26 @@ class Auth:
     async def update_token(
         user: auth.models.User, token: str | None, db=fastapi.Depends(database.get_db)
     ):
+        """Update the user's refresh token.
+
+        Args:
+            user (auth.models.User): The user.
+            token (str | None): The new refresh token, or None to clear it.
+            db: The database session.
+        """
         user.refresh_token = token
         await db.commit()
 
     async def get_user_by_email(self, email: str, db=fastapi.Depends(database.get_db)):
+        """Get a user by email.
+
+        Args:
+            email (str): The user's email.
+            db: The database session.
+
+        Returns:
+            auth.models.User: The user.
+        """
         stmt = select(auth.models.User).filter_by(email=email)
         user = db.execute(stmt)
         user = user.scalar_one_or_none()
@@ -110,11 +179,25 @@ class Auth:
     async def confirmed_email(
         self, email: str, db=fastapi.Depends(database.get_db)
     ) -> None:
+        """Confirm a user's email address.
+
+        Args:
+            email (str): The user's email.
+            db: The database session.
+        """
         user = await Auth.get_user_by_email(self, email=email, db=db)
         user.confirmed = True
         db.commit()
 
     def create_email_token(self, data: dict):
+        """Create an email verification token.
+
+        Args:
+            data (dict): The data to encode into the token.
+
+        Returns:
+            str: The encoded token.
+        """
         to_encode = data.copy()
         expire = datetime.utcnow() + timedelta(days=7)
         to_encode.update({"iat": datetime.utcnow(), "exp": expire})
@@ -122,6 +205,14 @@ class Auth:
         return token
 
     async def get_email_from_token(self, token: str):
+        """Get the email from an email verification token.
+
+        Args:
+            token (str): The token.
+
+        Returns:
+            str: The email.
+        """
         try:
             payload = jose.jwt.decode(token, self.SECRET, algorithms=[self.ALGORITHM])
             email = payload["sub"]
@@ -136,6 +227,15 @@ class Auth:
     async def create_user(
         self, body: auth.models.User, db=fastapi.Depends(database.get_db)
     ):
+        """Create a new user.
+
+        Args:
+            body (auth.models.User): The user data.
+            db: The database session.
+
+        Returns:
+            auth.models.User: The created user.
+        """
         avatar = None
         try:
             g = Gravatar(body.email)
@@ -152,6 +252,16 @@ class Auth:
     async def update_avatar_url(
         self, email: str, url: str | None, db=fastapi.Depends(database.get_db)
     ):
+        """Update a user's avatar URL.
+
+        Args:
+            email (str): The user's email.
+            url (str | None): The new avatar URL, or None to clear it.
+            db: The database session.
+
+        Returns:
+            auth.models.User: The updated user.
+        """
         user = (
             db.query(auth.models.User)
             .filter(auth.models.User.username == email)
@@ -165,3 +275,4 @@ class Auth:
 
 
 auth_service = Auth()
+

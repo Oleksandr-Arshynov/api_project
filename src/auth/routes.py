@@ -32,6 +32,21 @@ async def create_user(
     request: fastapi.Request,
     db=fastapi.Depends(database.get_db),
 ):
+    """
+    Create a new user account.
+
+    Args:
+        body (UserSchema): The user data to create the account.
+        bt (BackgroundTasks): Background tasks for sending confirmation email.
+        request (Request): The current request.
+        db: The database session.
+
+    Returns:
+        UserSchema: The created user data.
+        
+    Raises:
+        HTTPException: If the user already exists.
+    """
     user = await auth_service.get_user_by_email(body.email, db)
     if user:
         raise fastapi.HTTPException(status_code=409, detail="User already exists")
@@ -54,6 +69,19 @@ async def login(
     body: fastapi.security.OAuth2PasswordRequestForm = fastapi.Depends(),
     db=fastapi.Depends(database.get_db),
 ) -> auth.schemas.Token:
+    """
+    Log in a user.
+
+    Args:
+        body (OAuth2PasswordRequestForm): The login credentials.
+        db: The database session.
+
+    Returns:
+        Token: The access and refresh tokens.
+
+    Raises:
+        HTTPException: If the user is not found or credentials are incorrect.
+    """
     user = (
         db.query(auth.models.User)
         .filter(auth.models.User.email == body.username)
@@ -94,6 +122,19 @@ async def refresh_token(
     ),
     db=fastapi.Depends(database.get_db),
 ):
+    """
+    Refresh an access token.
+
+    Args:
+        credentials (HTTPAuthorizationCredentials): The refresh token.
+        db: The database session.
+
+    Returns:
+        Token: The new access and refresh tokens.
+
+    Raises:
+        HTTPException: If the token is invalid.
+    """
     token = credentials.credentials
     username = await auth_service.decode_refresh_token(token)
     user = (
@@ -118,6 +159,19 @@ async def refresh_token(
 
 @router.get("/confirmed_email/{token}")
 async def confirmed_email(token: str, db=fastapi.Depends(database.get_db)):
+    """
+    Confirm a user's email address.
+
+    Args:
+        token (str): The confirmation token.
+        db: The database session.
+
+    Returns:
+        Dict[str, str]: A message confirming the email confirmation.
+
+    Raises:
+        HTTPException: If there is an error verifying the token.
+    """
     email = await auth_service.get_email_from_token(token)
     user = await auth_service.get_user_by_email(email, db)
     if user is None:
@@ -137,6 +191,18 @@ async def request_email(
     request: fastapi.Request,
     db=fastapi.Depends(database.get_db),
 ):
+    """
+    Request email confirmation.
+
+    Args:
+        body (RequestEmail): The user's email address.
+        background_tasks (BackgroundTasks): Background tasks for sending the confirmation email.
+        request (Request): The current request.
+        db: The database session.
+
+    Returns:
+        Dict[str, str]: A message indicating that the email confirmation has been requested.
+    """
     user = await auth_service.get_user_by_email(body.email, db)
 
     if user.confirmed:
@@ -156,6 +222,15 @@ async def request_email(
 async def get_current_user(
     user: auth.models.User = fastapi.Depends(auth_service.get_current_user),
 ):
+    """
+    Get the current user.
+
+    Args:
+        user (User): The current user.
+
+    Returns:
+        UserSchema: The current user's data.
+    """
     return user
 
 
@@ -176,6 +251,17 @@ async def upgrade_avatar(
     user: auth.models.User = fastapi.Depends(auth_service.get_current_user),
     db=fastapi.Depends(database.get_db),
 ):
+    """
+    Upgrade the user's avatar.
+
+    Args:
+        file (UploadFile): The new avatar image file.
+        user (User): The current user.
+        db: The database session.
+
+    Returns:
+        UserSchema: The updated user data with the new avatar URL.
+    """
     public_id = f"Web19/{user.email}"
     print(public_id)
     res = cloudinary.uploader.upload(file.file, public_id=public_id, overwrite=True)

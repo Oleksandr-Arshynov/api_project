@@ -9,9 +9,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi_limiter import FastAPILimiter
 import redis.asyncio as redis
 
-sys.path.append(
-    "/Users/oleksandrarshinov/Desktop/Documents/Repository/api_project/api_project/src/static"
-)
+
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 import uvicorn
@@ -88,13 +86,18 @@ async def startup():
     )
     await FastAPILimiter.init(r)
 
-templates = Jinja2Templates(directory="/Users/oleksandrarshinov/Desktop/Documents/Repository/api_project/api_project/src/auth/templates")
+
+templates = Jinja2Templates(
+    directory="/Users/oleksandrarshinov/Desktop/Documents/Repository/api_project/api_project/src/auth/templates"
+)
+
 
 @contacts_api.get("/", response_class=HTMLResponse)
 def index(request: Request):
     return templates.TemplateResponse(
         "index.html", {"request": request, "our": "Build group WebPython #16"}
     )
+
 
 if __name__ == "__main__":
     uvicorn.run("main:contacts_api", host="0.0.0.0", port=8001, reload=True)

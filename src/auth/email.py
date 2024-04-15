@@ -21,6 +21,13 @@ conf = ConnectionConfig(
 
 
 async def send_email(email: str, username: str, host: str):
+    """
+    Sends an email to confirm the email address.
+
+    :param email: The email address to which the email will be sent.
+    :param username: The username to be displayed in the email.
+    :param host: The host on which the program is running.
+    """
     try:
         token_verification = auth_service.create_email_token(data={"sub": email})
         message = MessageSchema(
@@ -40,6 +47,13 @@ async def send_email(email: str, username: str, host: str):
         print(err)
 
 async def send_email_reset(email: str, username: str, host: str):
+    """
+    Sends an email to reset the password.
+
+    :param email: The email address to which the email will be sent.
+    :param username: The username to be displayed in the email.
+    :param host: The host on which the program is running.
+    """
     try:
         token_verification = auth_service.create_email_token(data={"sub": email})
         message = MessageSchema(
