@@ -1,10 +1,9 @@
 from datetime import datetime, timedelta
 import fastapi
 from fastapi.params import Query
-from auth.models import User
+from auth.models import UserModel, ContactModel
 from auth.service import Auth
 import contacts.schemas as schemas
-import contacts.models as models
 from database import get_db
 
 
@@ -20,7 +19,7 @@ async def get_contact_route(
     surname: str = Query(None),
     email: str = Query(None),
     db=fastapi.Depends(get_db),
-    current_user: User = fastapi.Depends(auth_service.get_current_user),
+    current_user: UserModel = fastapi.Depends(auth_service.get_current_user),
 ):
     """
     Get a single contact by ID or by name, surname, or email.
@@ -36,18 +35,18 @@ async def get_contact_route(
     Returns:
         dict or models.ContactModel: The contact information or an error message.
     """
-    query = db.query(models.ContactModel).filter(
-        models.ContactModel.user_id == current_user.id
+    query = db.query(ContactModel).filter(
+        ContactModel.user_id == current_user.id
     )
 
     if id is not None:
-        query = query.filter(models.ContactModel.id == id)
+        query = query.filter(ContactModel.id == id)
     if name:
-        query = query.filter(models.ContactModel.name == name)
+        query = query.filter(ContactModel.name == name)
     if surname:
-        query = query.filter(models.ContactModel.surname == surname)
+        query = query.filter(ContactModel.surname == surname)
     if email:
-        query = query.filter(models.ContactModel.email == email)
+        query = query.filter(ContactModel.email == email)
 
     contact = query.first()
     if not contact:
@@ -59,7 +58,7 @@ async def get_contact_route(
 @router.get("/")
 async def get_contacts_route(
     db=fastapi.Depends(get_db),
-    current_user: User = fastapi.Depends(auth_service.get_current_user),
+    current_user: UserModel = fastapi.Depends(auth_service.get_current_user),
 ):
     """
     Get all contacts belonging to the current user.
@@ -72,8 +71,8 @@ async def get_contacts_route(
         List[models.ContactModel]: The list of contacts belonging to the current user.
     """
     contacts = (
-        db.query(models.ContactModel)
-        .filter(models.ContactModel.user_id == current_user.id)
+        db.query(ContactModel)
+        .filter(ContactModel.user_id == current_user.id)
         .all()
     )
 
@@ -84,7 +83,7 @@ async def get_contacts_route(
 async def create_contact(
     contact: schemas.ContactRequestSchema,
     db=fastapi.Depends(get_db),
-    current_user: User = fastapi.Depends(auth_service.get_current_user),
+    current_user: UserModel = fastapi.Depends(auth_service.get_current_user),
 ):
     """
     Create a new contact for the current user.
@@ -97,7 +96,7 @@ async def create_contact(
     Returns:
         models.ContactModel: The newly created contact.
     """
-    new_contact = models.ContactModel(
+    new_contact = ContactModel(
         name=contact.name,
         surname=contact.surname,
         email=contact.email,
@@ -119,7 +118,7 @@ async def update_contact(
     id: int,
     contact: schemas.ContactRequestSchema,
     db=fastapi.Depends(get_db),
-    current_user: User = fastapi.Depends(auth_service.get_current_user),
+    current_user: UserModel = fastapi.Depends(auth_service.get_current_user),
 ):
     """
     Update an existing contact belonging to the current user.
@@ -134,7 +133,7 @@ async def update_contact(
         dict: A message indicating the success or failure of the operation.
     """
     db_contact = (
-        db.query(models.ContactModel).filter(models.ContactModel.id == id).first()
+        db.query(ContactModel).filter(ContactModel.id == id).first()
     )
 
     if db_contact and db_contact.user_id == current_user.id:
@@ -155,7 +154,7 @@ async def update_contact(
 async def delete_contact(
     id: int,
     db=fastapi.Depends(get_db),
-    current_user: User = fastapi.Depends(auth_service.get_current_user),
+    current_user: UserModel = fastapi.Depends(auth_service.get_current_user),
 ):
     """
     Delete an existing contact belonging to the current user.
@@ -168,7 +167,7 @@ async def delete_contact(
     Returns:
         dict or models.ContactModel: The deleted contact or an error message.
     """
-    contact = db.query(models.ContactModel).filter(models.ContactModel.id == id).first()
+    contact = db.query(ContactModel).filter(ContactModel.id == id).first()
     if contact and contact.user_id == current_user.id:
         db.delete(contact)
         db.commit()
@@ -179,7 +178,7 @@ async def delete_contact(
 @router.get("/upcoming_birthdays")
 async def get_upcoming_birthdays(
     db=fastapi.Depends(get_db),
-    current_user: User = fastapi.Depends(auth_service.get_current_user),
+    current_user: UserModel = fastapi.Depends(auth_service.get_current_user),
 ):
     """
     Get contacts with birthdays within the next week for the current user.
@@ -195,8 +194,8 @@ async def get_upcoming_birthdays(
     next_week = current_date + timedelta(days=8)
 
     contacts = (
-        db.query(models.ContactModel)
-        .filter(models.ContactModel.birthday.between(current_date, next_week))
+        db.query(ContactModel)
+        .filter(ContactModel.birthday.between(current_date, next_week))
         .all()
     )
     print(contacts)

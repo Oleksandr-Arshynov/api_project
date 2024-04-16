@@ -24,7 +24,6 @@ contacts_api = FastAPI()
 banned_ips = [
     ip_address("192.168.1.1"),
     ip_address("192.168.1.2"),
-    ip_address("127.0.0.1"),
 ]
 
 origins = ["*"]
@@ -100,4 +99,4 @@ def index(request: Request):
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:contacts_api", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("main:contacts_api", host="127.0.0.1", port=8001, reload=True)

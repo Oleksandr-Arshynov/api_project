@@ -1,4 +1,3 @@
-from sqlalchemy import select
 from pathlib import Path
 
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType

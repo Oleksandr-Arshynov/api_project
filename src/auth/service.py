@@ -116,8 +116,8 @@ class Auth:
         if user is None:
             print("User from db")
             user = (
-                db.query(auth.models.User)
-                .filter(auth.models.User.username == email)
+                db.query(auth.models.UserModel)
+                .filter(auth.models.UserModel.username == email)
                 .first()
             )
             if user is None:
@@ -149,7 +149,7 @@ class Auth:
             )
 
     async def update_token(
-        user: auth.models.User, token: str | None, db=fastapi.Depends(database.get_db)
+        user: auth.models.UserModel, token: str | None, db=fastapi.Depends(database.get_db)
     ):
         """Update the user's refresh token.
 
@@ -225,7 +225,7 @@ class Auth:
             )
 
     async def create_user(
-        self, body: auth.models.User, db=fastapi.Depends(database.get_db)
+        self, body: auth.models.UserModel, db=fastapi.Depends(database.get_db)
     ):
         """Create a new user.
 
@@ -243,7 +243,7 @@ class Auth:
         except Exception as err:
             print(err)
 
-        new_user = auth.models.User(**body.model_dump(), avatar=avatar)
+        new_user = auth.models.UserModel(**body.model_dump(), avatar=avatar)
         db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
@@ -263,8 +263,8 @@ class Auth:
             auth.models.User: The updated user.
         """
         user = (
-            db.query(auth.models.User)
-            .filter(auth.models.User.username == email)
+            db.query(auth.models.UserModel)
+            .filter(auth.models.UserModel.username == email)
             .first()
         )
         user.avatar = url

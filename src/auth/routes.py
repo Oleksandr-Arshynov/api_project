@@ -13,7 +13,6 @@ from fastapi import (
 import cloudinary
 import cloudinary.uploader
 
-    
 
 import auth.schemas
 import auth.models
@@ -43,7 +42,7 @@ async def create_user(
 
     Returns:
         UserSchema: The created user data.
-        
+
     Raises:
         HTTPException: If the user already exists.
     """
@@ -52,7 +51,7 @@ async def create_user(
         raise fastapi.HTTPException(status_code=409, detail="User already exists")
 
     hashed_password = auth_service.get_password_hash(body.password)
-    new_user = auth.models.User(
+    new_user = auth.models.UserModel(
         username=body.username, email=body.email, hash_password=hashed_password
     )
 
@@ -83,8 +82,8 @@ async def login(
         HTTPException: If the user is not found or credentials are incorrect.
     """
     user = (
-        db.query(auth.models.User)
-        .filter(auth.models.User.email == body.username)
+        db.query(auth.models.UserModel)
+        .filter(auth.models.UserModel.email == body.username)
         .first()
     )
     if not user:
@@ -138,8 +137,8 @@ async def refresh_token(
     token = credentials.credentials
     username = await auth_service.decode_refresh_token(token)
     user = (
-        db.query(auth.models.User)
-        .filter(auth.models.User.refresh_token == token)
+        db.query(auth.models.UserModel)
+        .filter(auth.models.UserModel.refresh_token == token)
         .first()
     )
     if user.refresh_token != token:
@@ -220,7 +219,7 @@ async def request_email(
     dependencies=[fastapi.Depends(RateLimiter(times=10, seconds=20))],
 )
 async def get_current_user(
-    user: auth.models.User = fastapi.Depends(auth_service.get_current_user),
+    user: auth.models.UserModel = fastapi.Depends(auth_service.get_current_user),
 ):
     """
     Get the current user.
@@ -241,6 +240,7 @@ cloudinary.config(
     secure=True,
 )
 
+
 @router.patch(
     "/avatar",
     response_model=auth.schemas.UserDb,
@@ -248,7 +248,7 @@ cloudinary.config(
 )
 async def upgrade_avatar(
     file: UploadFile = File(),
-    user: auth.models.User = fastapi.Depends(auth_service.get_current_user),
+    user: auth.models.UserModel = fastapi.Depends(auth_service.get_current_user),
     db=fastapi.Depends(database.get_db),
 ):
     """
@@ -273,6 +273,3 @@ async def upgrade_avatar(
     auth_service.cache.set(user.email, pickle.dumps(user))
     auth_service.cache.expire(user.email, 300)
     return user
-
-
-
