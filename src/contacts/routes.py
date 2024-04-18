@@ -55,7 +55,7 @@ async def get_contact_route(
     return contact
 
 
-@router.get("/")
+@router.get("")
 async def get_contacts_route(
     db=fastapi.Depends(get_db),
     current_user: UserModel = fastapi.Depends(auth_service.get_current_user),

@@ -97,7 +97,7 @@ class Auth:
         credentials_exception = fastapi.HTTPException(
             status_code=fastapi.status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
+            headers={"Authenticate": "Bearer"},
         )
         try:
             payload = jose.jwt.decode(token, self.SECRET, algorithms=[self.ALGORITHM])
@@ -107,19 +107,25 @@ class Auth:
             raise credentials_exception
 
         email = payload.get("sub")
+        print(f"Email {email}")
+        
         if email is None:
             raise credentials_exception
 
         user_hash = str(email)
         user = self.cache.get(user_hash)
+        
+        print(f"User {user}")
 
         if user is None:
             print("User from db")
             user = (
                 db.query(auth.models.UserModel)
-                .filter(auth.models.UserModel.username == email)
+                .filter(auth.models.UserModel.username == user_hash)
                 .first()
             )
+            print(f"User {user}")
+            
             if user is None:
                 raise credentials_exception
             self.cache.set(user_hash, pickle.dumps(user))
@@ -127,6 +133,7 @@ class Auth:
         else:
             print("User from cache")
             user = pickle.loads(user)
+            print(user)
         return user
 
     async def decode_refresh_token(self, token: str) -> str:

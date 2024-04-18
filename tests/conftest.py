@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 import sys
 
 import pytest
@@ -11,7 +12,7 @@ sys.path.append(
 )
 
 from src.main import contacts_api
-from src.auth.models import Base, UserModel
+from src.auth.models import Base, ContactModel, UserModel
 from src.database import get_db
 from src.auth.service import auth_service
 
@@ -33,10 +34,21 @@ def init_models_wrap():
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
         async with TestingSessionLocal() as session:
-            hash_password = auth_service.get_password_hash(test_user["password"])
-            current_user = UserModel(username=test_user["username"], email=test_user["email"], hash_password=hash_password,
+            hash_pass = auth_service.get_password_hash(test_user["password"])
+            current_user = UserModel(username=test_user["username"], email=test_user["email"], hash_password=hash_pass,
                                 confirmed=True)
             session.add(current_user)
+            
+        
+            new_contact = ContactModel(
+                    name="James config",
+                    surname="Bond",
+                    email="james_bond@gmail.com",
+                    other=None,
+                    user_id=current_user.id
+                )
+            session.add(new_contact)
+
             await session.commit()
 
     asyncio.run(init_models())
@@ -63,5 +75,5 @@ def client():
 
 @pytest_asyncio.fixture()
 async def get_token():
-    token = await auth_service.create_access_token(payload={"sub": test_user["username"]})
+    token = await auth_service.create_access_token(payload={"sub": test_user["email"]})
     return token
