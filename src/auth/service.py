@@ -178,7 +178,7 @@ class Auth:
         Returns:
             auth.models.User: The user.
         """
-        stmt = select(auth.models.User).filter_by(email=email)
+        stmt = select(auth.models.UserModel).filter_by(email=email)
         user = db.execute(stmt)
         user = user.scalar_one_or_none()
         return user

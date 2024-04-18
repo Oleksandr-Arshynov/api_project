@@ -88,7 +88,7 @@ async def login(
     )
     if not user:
         raise fastapi.HTTPException(status_code=401, detail="User not found")
-    if not user:
+    if not user.confirmed:
         raise fastapi.HTTPException(status_code=401, detail="User not confirmed")
     verification = auth_service.verify_password(body.password, user.hash_password)
     if not verification:
