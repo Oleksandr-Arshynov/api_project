@@ -5,7 +5,7 @@ import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 sys.path.append(
     "/Users/oleksandrarshinov/Desktop/Documents/Repository/api_project/api_project/src"
 )
@@ -63,5 +63,5 @@ def client():
 
 @pytest_asyncio.fixture()
 async def get_token():
-    token = await auth_service.create_access_token(data={"sub": test_user["email"]})
+    token = await auth_service.create_access_token(payload={"sub": test_user["username"]})
     return token
